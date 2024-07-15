@@ -4,6 +4,8 @@ from concurrent.futures import ThreadPoolExecutor, wait
 from model import environment, dqn
 from util.metrics_util import ndcg_metric, novelty_metric, ils_metric, interdiv_metric
 
+from tqdm import tqdm
+
 user_num = 0
 precision, ndcg, novelty, coverage, ils, interdiv = [], [], [], [], [], []
 
@@ -43,10 +45,12 @@ def recommend_offpolicy(env, agent, last_obs):
 
 
 def trainAgent(agent, step_max):
-    step = 0
-    while step < step_max:
+    # step = 0
+    # while step < step_max:
+    #     agent.learn()
+    #     step += 1
+    for step in tqdm(range(step_max)):
         agent.learn()
-        step += 1
 
 
 def recommender(ep_user, train_df, test_df, train_dict,
@@ -83,21 +87,30 @@ def recommender(ep_user, train_df, test_df, train_dict,
 def train_dqn(train_df, test_df,
               item_sim_dict, item_quality_dict, item_pop_dict,
               max_item_id, item_list, mask_list, args):
+    
+    global precision, ndcg, novelty, coverage, ils, interdiv
+
     train_dict = {}
     for index, row in train_df.iterrows():
         train_dict.setdefault(int(row['user_id']), list())
         train_dict[int(row['user_id'])].append(int(row['item_id']))
 
-    futures = []
-    executor = ThreadPoolExecutor(max_workers=args.j)
+    # futures = []
+    # executor = ThreadPoolExecutor(max_workers=args.j)
     train_episodes = random.sample(list(train_dict.keys()), args.episode_max)
+    iter = 0
     for ep_user in train_episodes:
-        future = executor.submit(recommender,
-                                 ep_user, train_df, test_df, train_dict,
-                                 item_sim_dict, item_quality_dict, item_pop_dict,
-                                 max_item_id, mask_list, args)
-        futures.append(future)
-    wait(futures)
+        # future = executor.submit(recommender,
+        #                          ep_user, train_df, test_df, train_dict,
+        #                          item_sim_dict, item_quality_dict, item_pop_dict,
+        #                          max_item_id, mask_list, args)
+        iter += 1
+        print(iter)
+        recommender(ep_user, train_df, test_df, train_dict,
+                    item_sim_dict, item_quality_dict, item_pop_dict,
+                    max_item_id, mask_list, args)
+        # futures.append(future)
+    # wait(futures)
 
     print("Precision: ", np.mean(precision))
     print("NDCG: ", np.mean(ndcg))
